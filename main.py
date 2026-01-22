@@ -11,9 +11,10 @@ import nltk
 @st.cache_resource
 def load_nltk():
     try:
-        nltk.download('punkt', quiet=True)
-        nltk.download('brown', quiet=True)
-        nltk.download('wordnet', quiet=True)
+        nltk.download('punkt')
+        nltk.download('brown')
+        nltk.download('wordnet')
+        nltk.download('punkt_tab')
     except:
         pass
 
@@ -23,24 +24,11 @@ load_nltk()
 st.set_page_config(
     page_title="Alpha Vision",
     layout="wide",
-    page_icon="📈"
+    page_icon="favicon.png"
 )
 
 EXCEL_DB = "currency_data.xlsx"
 CURRENCIES = ["USD-BRL", "EUR-BRL", "GBP-BRL", "JPY-BRL"]
-
-# Função auxiliar que faltava no seu código
-def run_sentiment_analysis(pct_change):
-    try:
-        change = float(pct_change)
-        if change > 0.05:
-            return "ALTA FORTE 🟢"
-        elif change < -0.05:
-            return "BAIXA FORTE 🔴"
-        else:
-            return "ESTÁVEL ⚪"
-    except:
-        return "INDETERMINADO ⚪"
 
 def fetch_market_data():
     url = f"https://economia.awesomeapi.com.br/last/{','.join(CURRENCIES)}"
@@ -50,11 +38,20 @@ def fetch_market_data():
     except:
         return None
 
+def run_sentiment_analysis(pct_change):
+    try:
+        change = float(pct_change)
+        if change > 0.05: return "BULLISH (Otimista)"
+        elif change < -0.05: return "BEARISH (Pessimista)"
+        else: return "NEUTRAL"
+    except:
+        return "NEUTRAL"
+
 def process_and_save_data():
     raw_data = fetch_market_data()
     if not (raw_data and isinstance(raw_data, dict)):
         return None
-    
+        
     records = []
     data_atual = datetime.now().strftime("%d/%m/%Y")
     hora_atual = datetime.now().strftime("%H:%M:%S")
@@ -67,12 +64,12 @@ def process_and_save_data():
                 "Data": data_atual,
                 "Asset": info.get('name', '').split('/')[0],
                 "Price": float(info.get('bid', 0)),
-                "Change_Pct": variacao,
+                "Change_Pct": str(variacao),
                 "Sentiment": run_sentiment_analysis(variacao)
             })
-
+    
     new_df = pd.DataFrame(records)
-
+    
     if os.path.exists(EXCEL_DB):
         try:
             old_df = pd.read_excel(EXCEL_DB)
@@ -100,45 +97,40 @@ st.title("♾️ Alpha Vision")
 st.caption(f"Última atualização do mercado: {datetime.now().strftime('%H:%M:%S')}")
 
 if df_completo is not None and not df_completo.empty:
-    # Filtra as últimas 4 entradas (uma para cada moeda)
+    # Filtra as últimas 4 entradas para o Dashboard principal
     df_recente = df_completo.tail(4).reset_index(drop=True)
-
+    
     # 1. Painel de Métricas (Cards)
     cols = st.columns(4)
     for i, row in df_recente.iterrows():
         with cols[i]:
             val_pct = row.get('Change_Pct', '0')
-            st.metric(
-                label=row['Asset'], 
-                value=f"R$ {row['Price']:.2f}", 
-                delta=f"{val_pct}%"
-            )
+            st.metric(label=row['Asset'], value=f"R$ {row['Price']:.2f}", delta=f"{val_pct}%")
             st.markdown(f"**Análise:** {row['Sentiment']}")
 
     # 2. Gráfico de Comparativo
     st.markdown("---")
-    fig = px.bar(
-        df_recente, x="Asset", y="Price", color="Asset", 
-        title="Comparativo de Ativos em Tempo Real", 
-        template="plotly_dark", text_auto='.2f'
-    )
+    fig = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
+                 title="Comparativo de Ativos em Tempo Real", 
+                 template="plotly_dark", text_auto='.2f')
     st.plotly_chart(fig, use_container_width=True)
 
     # 3. Sidebar (Barra Lateral)
     with st.sidebar:
         st.header("💱 Conversor Alpha")
         val_brl = st.number_input("Valor em R$", min_value=1.0, value=100.0)
-        
-        assets_disponiveis = df_recente['Asset'].unique()
-        target = st.selectbox("Converter para:", assets_disponiveis)
+        target = st.selectbox("Converter para:", df_recente['Asset'].unique())
         
         # Cálculo dinâmico
         price_target = df_recente[df_recente['Asset'] == target]['Price'].values[0]
         st.subheader(f"{val_brl / price_target:.2f} {target}")
         
+        # --- DISCLAIMER ---
         st.markdown("---")
         st.caption("""
-        ⚠️ **DISCLAIMER:** As informações aqui apresentadas são de caráter exclusivamente informativo.
+        ⚠️ **DISCLAIMER:** As informações aqui apresentadas são de caráter exclusivamente informativo e demonstrativo. 
+        O uso destes dados para operações de mercado é de inteira responsabilidade do usuário.
         """)
+
 else:
     st.error("Conectando aos servidores Alpha Vision... Por favor, aguarde.")
