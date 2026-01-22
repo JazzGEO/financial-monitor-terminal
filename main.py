@@ -7,7 +7,7 @@ import os
 import plotly.express as px
 import nltk
 
-# --- PREPARAÇÃO SILENCIOSA ---
+# --- PREPARAÇÃO SILENCIOSA DE AMBIENTE ---
 @st.cache_resource
 def load_nltk():
     try:
@@ -21,7 +21,8 @@ def load_nltk():
 load_nltk()
 
 # --- CONFIGURAÇÃO ALPHA VISION ---
-st.set_page_config(page_title="Alpha Vision", layout="wide", page_icon="🚀")
+# Atualizado o ícone da aba para o símbolo do infinito
+st.set_page_config(page_title="Alpha Vision", layout="wide", page_icon="∞")
 
 EXCEL_DB = "currency_data.xlsx"
 CURRENCIES = ["USD-BRL", "EUR-BRL", "GBP-BRL", "JPY-BRL"]
@@ -79,7 +80,7 @@ def process_and_save_data():
         new_df.to_excel(EXCEL_DB, index=False)
         return new_df
 
-# --- EXECUÇÃO ---
+# --- EXECUÇÃO DO FLUXO DE DADOS ---
 df_completo = process_and_save_data()
 
 if df_completo is None and os.path.exists(EXCEL_DB):
@@ -88,14 +89,15 @@ if df_completo is None and os.path.exists(EXCEL_DB):
     except:
         pass
 
-# --- INTERFACE PÚBLICA ---
-st.title("🚀 Alpha Vision")
-st.caption(f"Última atualização do mercado: {datetime.now().strftime('%H:%M:%S')}")
+# --- INTERFACE PÚBLICA ALPHA VISION ---
+# Atualizado o título com o símbolo do infinito
+st.title("∞ Alpha Vision")
+st.caption(f"Análise contínua de mercado | {datetime.now().strftime('%H:%M:%S')}")
 
 if df_completo is not None and not df_completo.empty:
     df_recente = df_completo.tail(4).reset_index(drop=True)
     
-    # 1. Cards de Métricas
+    # 1. Painel de Métricas
     cols = st.columns(4)
     for i, row in df_recente.iterrows():
         with cols[i]:
@@ -103,14 +105,14 @@ if df_completo is not None and not df_completo.empty:
             st.metric(label=row['Asset'], value=f"R$ {row['Price']:.2f}", delta=f"{val_pct}%")
             st.markdown(f"**Análise:** {row['Sentiment']}")
 
-    # 2. Gráfico Alpha Vision
+    # 2. Gráfico de Comparativo
     st.markdown("---")
     fig = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
-                 title="Comparativo de Ativos em Tempo Real", 
+                 title="Monitoramento de Ativos em Tempo Real", 
                  template="plotly_dark", text_auto='.2f')
     st.plotly_chart(fig, use_container_width=True)
 
-    # 3. Sidebar (Conversor e Aviso)
+    # 3. Sidebar (Barra Lateral)
     with st.sidebar:
         st.header("💱 Conversor Alpha")
         val_brl = st.number_input("Valor em R$", min_value=1.0, value=100.0)
@@ -120,7 +122,10 @@ if df_completo is not None and not df_completo.empty:
         st.subheader(f"{val_brl / price_target:.2f} {target}")
         
         st.markdown("---")
-        st.caption("⚠️ Fins educacionais. Não use para investimentos.")
+        st.caption("""
+        ⚠️ **DISCLAIMER:** As informações aqui apresentadas são de caráter exclusivamente informativo e demonstrativo. 
+        O uso destes dados para operações de mercado é de inteira responsabilidade do usuário.
+        """)
 
 else:
-    st.error("Sincronizando com Alpha Vision...")
+    st.error("Conectando aos servidores Alpha Vision... Por favor, aguarde.")
