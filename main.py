@@ -141,6 +141,6 @@ if not df_completo.empty:
 else:
     st.error("Conectando ao terminal de dados...")
 
-# Rodapé de Isenção 
+# Rodapé 
 st.markdown("---")
-st.caption("© 2024 Alpha Vision Terminal | Fins Informantivos")
+st.caption("© 2024 Alpha Vision Terminal")
