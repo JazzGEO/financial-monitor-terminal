@@ -7,7 +7,7 @@ import os
 import plotly.express as px
 import nltk
 
-# --- PREPARAÇÃO DO AMBIENTE DE IA ---
+# --- CONFIGURAÇÃO DE AMBIENTE IA ---
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
@@ -16,7 +16,7 @@ except LookupError:
     nltk.download('wordnet')
 
 # --- CONFIGURAÇÃO DA INTERFACE ---
-st.set_page_config(page_title="Financial Data Analytics Terminal", layout="wide")
+st.set_page_config(page_title="Alpha Vision Terminal", layout="wide")
 
 EXCEL_DB = "currency_data.xlsx"
 CURRENCIES = ["USD-BRL", "EUR-BRL", "GBP-BRL", "JPY-BRL"]
@@ -42,25 +42,23 @@ def run_sentiment_analysis(pct_change):
 
 def auto_update_data():
     raw_data = fetch_market_data()
-    # Verificação robusta: se raw_data não for um dicionário, ignora o processamento
     if raw_data and isinstance(raw_data, dict):
         records = []
         for key, info in raw_data.items():
-            # Verifica se 'info' é realmente um dicionário antes de usar .get()
             if isinstance(info, dict):
                 variacao = info.get('pctChange', '0')
-                sentiment, icon = run_sentiment_analysis(variacao)
+                sentiment, _ = run_sentiment_analysis(variacao)
                 
                 records.append({
                     "Timestamp": datetime.now().strftime("%H:%M:%S"),
-                    "Asset": info.get('name', 'Desconhecido').split('/')[0],
+                    "Data": datetime.now().strftime("%d/%m/%Y"),
+                    "Asset": info.get('name', '').split('/')[0],
                     "Price": float(info.get('bid', 0)),
-                    "Change_%": variacao,
+                    "Change_ %": variacao,
                     "Sentiment": sentiment
                 })
         
-        if not records:
-            return None
+        if not records: return None
 
         new_df = pd.DataFrame(records)
         if os.path.exists(EXCEL_DB):
@@ -76,57 +74,55 @@ def auto_update_data():
         return final_df
     return None
 
-# --- FLUXO DE CARREGAMENTO ---
-df = None
+# --- CARREGAMENTO ---
+df_completo = None
 if not os.path.exists(EXCEL_DB):
-    df = auto_update_data()
+    df_completo = auto_update_data()
 else:
     try:
-        df = pd.read_excel(EXCEL_DB)
-        df_atualizado = auto_update_data()
-        if df_atualizado is not None:
-            df = df_atualizado
+        df_completo = pd.read_excel(EXCEL_DB)
+        df_novo = auto_update_data()
+        if df_novo is not None:
+            df_completo = df_novo
     except:
-        df = auto_update_data()
+        df_completo = auto_update_data()
 
-# --- INTERFACE VISUAL ---
-st.title("📊 Financial Data Analytics Terminal")
-st.markdown(f"**Status:** Operacional | **Data:** {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+# --- INTERFACE ALPHA VISION ---
+st.title("Alpha Vision Terminal")
+st.caption(f"Última varredura: {datetime.now().strftime('%H:%M:%S')}")
 
-if df is not None and not df.empty:
-    # 1. Cards de Métricas
-    latest_data = df.groupby('Asset').last().reset_index()
-    cols = st.columns(4)
+if df_completo is not None and not df_completo.empty:
+    # Filtra apenas a última atualização para o Dashboard (4 moedas mais recentes)
+    df_recente = df_completo.tail(4)
     
-    for i, row in latest_data.iterrows():
+    # 1. Cards de Métricas
+    cols = st.columns(4)
+    for i, row in df_recente.reset_index().iterrows():
         with cols[i]:
-            st.metric(label=row['Asset'], value=f"R$ {row['Price']:.2f}", delta=f"{row['Change_%']}%")
-            st.write(f"Status IA: {row['Sentiment']}")
+            st.metric(label=row['Asset'], value=f"R$ {row['Price']:.2f}", delta=f"{row['Change_ %']}%")
+            st.write(f"Análise: {row['Sentiment']}")
 
-    # 2. Gráfico de Tendência Histórica
+    # 2. Gráfico de Atualização (Apenas o snapshot atual)
     st.markdown("---")
-    fig = px.line(df, x="Timestamp", y="Price", color="Asset", 
-                 title="Análise de Volatilidade Histórica", template="plotly_dark")
+    fig = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
+                 title="Comparativo de Preços - Última Apuração", 
+                 template="plotly_dark", text_auto='.2f')
     st.plotly_chart(fig, use_container_width=True)
 
-    # 3. Base de Dados
-    with st.expander("📄 Visualizar Log de Dados (Excel)"):
-        st.dataframe(df.tail(10), use_container_width=True)
-
-    # 4. Conversor Lateral (Restaurado)
-    st.sidebar.header("💱 Conversor de Câmbio")
-    input_val = st.sidebar.number_input("Valor em Reais (BRL)", min_value=1.0, value=10.0)
-    target = st.sidebar.selectbox("Converter para Ativo:", latest_data['Asset'].unique())
+    # 3. Conversor Lateral
+    st.sidebar.header("💱 Conversor Alpha")
+    input_val = st.sidebar.number_input("BRL (R$)", min_value=1.0, value=10.0)
+    target = st.sidebar.selectbox("Moeda Destino:", df_recente['Asset'].unique())
     
-    price_target = latest_data[latest_data['Asset'] == target]['Price'].values[0]
-    conversao = input_val / price_target
-    st.sidebar.subheader(f"{conversao:.2f} {target}")
+    price_target = df_recente[df_recente['Asset'] == target]['Price'].values[0]
+    st.sidebar.subheader(f"{input_val / price_target:.2f} {target}")
     
-    # 5. Disclaimer de Segurança (Restaurado)
+    # 4. Aviso de Segurança (Reduzido e Discreto)
     st.sidebar.markdown("---")
-    st.sidebar.warning("""
-    **AVISO DE SEGURANÇA:**
-    Este sistema é estritamente educacional. Não tome decisões de investimento baseando-se nestes dados. O autor não se responsabiliza por perdas financeiras.
-    """)
+    st.sidebar.caption("⚠️ **Aviso:** Fins educacionais. Não use para investimentos reais.")
+
+    # 5. Log Oculto (Apenas para conferência rápida)
+    with st.expander("Visualizar Log Oculto"):
+        st.dataframe(df_completo.tail(10), use_container_width=True)
 else:
-    st.error("Erro ao carregar base de dados. Verifique a conexão com a API e recarregue a página.")
+    st.error("Falha na sincronização. Verifique a conexão.")
