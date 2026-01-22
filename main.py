@@ -7,7 +7,7 @@ import os
 import plotly.express as px
 import nltk
 
-# --- AMBIENTE IA ---
+# --- PREPARAÇÃO SILENCIOSA DE AMBIENTE ---
 @st.cache_resource
 def load_nltk():
     try:
@@ -21,7 +21,7 @@ def load_nltk():
 load_nltk()
 
 # --- CONFIGURAÇÃO ALPHA VISION ---
-st.set_page_config(page_title="Alpha Vision", layout="wide", page_icon="🌐")
+st.set_page_config(page_title="Alpha Vision", layout="wide", page_icon="🚀")
 
 EXCEL_DB = "currency_data.xlsx"
 CURRENCIES = ["USD-BRL", "EUR-BRL", "GBP-BRL", "JPY-BRL"]
@@ -34,17 +34,14 @@ def fetch_market_data():
     except:
         return None
 
-def get_visual_signal(pct_change):
+def run_sentiment_analysis(pct_change):
     try:
         change = float(pct_change)
-        if change > 0.05: 
-            return "ALTA", "🟢"
-        elif change < -0.05: 
-            return "BAIXA", "🔴"
-        else: 
-            return "ESTÁVEL", "⚪"
+        if change > 0.05: return "BULLISH (Otimista)"
+        elif change < -0.05: return "BEARISH (Pessimista)"
+        else: return "NEUTRAL"
     except:
-        return "---", "⚪"
+        return "NEUTRAL"
 
 def process_and_save_data():
     raw_data = fetch_market_data()
@@ -58,16 +55,13 @@ def process_and_save_data():
     for key, info in raw_data.items():
         if isinstance(info, dict):
             variacao = info.get('pctChange', '0')
-            sinal, icon = get_visual_signal(variacao)
-            
             records.append({
                 "Timestamp": hora_atual,
                 "Data": data_atual,
                 "Asset": info.get('name', '').split('/')[0],
                 "Price": float(info.get('bid', 0)),
                 "Change_Pct": str(variacao),
-                "Signal": sinal,
-                "Icon": icon
+                "Sentiment": run_sentiment_analysis(variacao)
             })
     
     new_df = pd.DataFrame(records)
@@ -85,7 +79,7 @@ def process_and_save_data():
         new_df.to_excel(EXCEL_DB, index=False)
         return new_df
 
-# --- FLUXO DE DADOS ---
+# --- EXECUÇÃO DO FLUXO DE DADOS ---
 df_completo = process_and_save_data()
 
 if df_completo is None and os.path.exists(EXCEL_DB):
@@ -94,29 +88,27 @@ if df_completo is None and os.path.exists(EXCEL_DB):
     except:
         pass
 
-# --- INTERFACE ALPHA VISION PREMIUM ---
-# Título com símbolo de infinito estilizado (HTML para melhor visual)
-st.markdown("<h1 style='text-align: left;'>💎 Alpha Vision <span style='color: #00d4ff;'>♾️</span></h1>", unsafe_allow_html=True)
-st.caption(f"Inteligência de Mercado Ativa | {datetime.now().strftime('%H:%M:%S')}")
+# --- INTERFACE PÚBLICA ALPHA VISION ---
+st.title("🚀 Alpha Vision")
+st.caption(f"Última atualização do mercado: {datetime.now().strftime('%H:%M:%S')}")
 
 if df_completo is not None and not df_completo.empty:
+    # Filtra as últimas 4 entradas para o Dashboard principal
     df_recente = df_completo.tail(4).reset_index(drop=True)
     
-    # 1. Cards de Métricas com as "Luzinhas" (Sinais Visuais)
+    # 1. Painel de Métricas (Cards)
     cols = st.columns(4)
     for i, row in df_recente.iterrows():
         with cols[i]:
             val_pct = row.get('Change_Pct', '0')
-            # Exibe a métrica com a cor do delta e a "luzinha" abaixo
             st.metric(label=row['Asset'], value=f"R$ {row['Price']:.2f}", delta=f"{val_pct}%")
-            st.markdown(f"**Tendência:** {row['Icon']} {row['Signal']}")
+            st.markdown(f"**Análise:** {row['Sentiment']}")
 
     # 2. Gráfico de Comparativo
     st.markdown("---")
     fig = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
-                 title="Snapshot de Ativos em Tempo Real", 
-                 template="plotly_dark", text_auto='.2f',
-                 color_discrete_sequence=px.colors.qualitative.Pastel)
+                 title="Comparativo de Ativos em Tempo Real", 
+                 template="plotly_dark", text_auto='.2f')
     st.plotly_chart(fig, use_container_width=True)
 
     # 3. Sidebar (Barra Lateral)
@@ -125,9 +117,11 @@ if df_completo is not None and not df_completo.empty:
         val_brl = st.number_input("Valor em R$", min_value=1.0, value=100.0)
         target = st.selectbox("Converter para:", df_recente['Asset'].unique())
         
+        # Cálculo dinâmico
         price_target = df_recente[df_recente['Asset'] == target]['Price'].values[0]
         st.subheader(f"{val_brl / price_target:.2f} {target}")
         
+        # --- NOVO DISCLAIMER APROVADO ---
         st.markdown("---")
         st.caption("""
         ⚠️ **DISCLAIMER:** As informações aqui apresentadas são de caráter exclusivamente informativo e demonstrativo. 
@@ -135,4 +129,4 @@ if df_completo is not None and not df_completo.empty:
         """)
 
 else:
-    st.error("Estabelecendo conexão segura com Alpha Vision...")
+    st.error("Conectando aos servidores Alpha Vision... Por favor, aguarde.")
