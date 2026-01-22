@@ -89,7 +89,7 @@ if df_completo is None and os.path.exists(EXCEL_DB):
         pass
 
 # --- INTERFACE PÚBLICA ALPHA VISION ---
-st.title("🚀 Alpha Vision")
+st.title("♾️ Alpha Vision")
 st.caption(f"Última atualização do mercado: {datetime.now().strftime('%H:%M:%S')}")
 
 if df_completo is not None and not df_completo.empty:
