@@ -133,7 +133,7 @@ if not df_completo.empty:
         # --- RECOLOCANDO SEUS DISCLAIMERS ORIGINAIS ---
         st.warning("⚠️ **Aviso de Segurança**")
         st.caption("""
-        Este software foi desenvolvido estritamente para fins educacionais e de portfólio. 
+        Este software foi desenvolvido estritamente para fins informativos. 
         Os dados são obtidos de fontes públicas e podem sofrer atrasos. 
         O autor não se responsabiliza por decisões financeiras tomadas com base nestas informações.
         """)
