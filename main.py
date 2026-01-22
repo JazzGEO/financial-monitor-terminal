@@ -54,7 +54,7 @@ def auto_update_data():
                     "Data": datetime.now().strftime("%d/%m/%Y"),
                     "Asset": info.get('name', '').split('/')[0],
                     "Price": float(info.get('bid', 0)),
-                    "Change_ %": variacao,
+                    "Change_Percent": variacao, # Nome padronizado para evitar erro
                     "Sentiment": sentiment
                 })
         
@@ -80,6 +80,7 @@ if not os.path.exists(EXCEL_DB):
     df_completo = auto_update_data()
 else:
     try:
+        # Tenta ler o Excel; se falhar ou estiver vazio, busca novos dados
         df_completo = pd.read_excel(EXCEL_DB)
         df_novo = auto_update_data()
         if df_novo is not None:
@@ -88,41 +89,55 @@ else:
         df_completo = auto_update_data()
 
 # --- INTERFACE ALPHA VISION ---
-st.title("Alpha Vision Terminal")
+st.title("🚀 Alpha Vision Terminal")
 st.caption(f"Última varredura: {datetime.now().strftime('%H:%M:%S')}")
 
 if df_completo is not None and not df_completo.empty:
-    # Filtra apenas a última atualização para o Dashboard (4 moedas mais recentes)
-    df_recente = df_completo.tail(4)
+    # Pegamos as últimas 4 entradas para garantir que o Dashboard esteja atualizado
+    df_recente = df_completo.tail(4).reset_index(drop=True)
     
     # 1. Cards de Métricas
     cols = st.columns(4)
-    for i, row in df_recente.reset_index().iterrows():
+    for i, row in df_recente.iterrows():
         with cols[i]:
-            st.metric(label=row['Asset'], value=f"R$ {row['Price']:.2f}", delta=f"{row['Change_ %']}%")
+            st.metric(
+                label=row['Asset'], 
+                value=f"R$ {row['Price']:.2f}", 
+                delta=f"{row['Change_Percent']}%"
+            )
             st.write(f"Análise: {row['Sentiment']}")
 
-    # 2. Gráfico de Atualização (Apenas o snapshot atual)
+    # 2. Gráfico de Comparativo (Apenas o snapshot atual)
     st.markdown("---")
-    fig = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
-                 title="Comparativo de Preços - Última Apuração", 
-                 template="plotly_dark", text_auto='.2f')
+    fig = px.bar(
+        df_recente, 
+        x="Asset", 
+        y="Price", 
+        color="Asset", 
+        title="Comparativo de Preços - Última Apuração", 
+        template="plotly_dark", 
+        text_auto='.2f'
+    )
     st.plotly_chart(fig, use_container_width=True)
 
     # 3. Conversor Lateral
     st.sidebar.header("💱 Conversor Alpha")
     input_val = st.sidebar.number_input("BRL (R$)", min_value=1.0, value=10.0)
-    target = st.sidebar.selectbox("Moeda Destino:", df_recente['Asset'].unique())
     
+    # Lista única de moedas disponíveis no momento
+    moedas_disponiveis = df_recente['Asset'].unique()
+    target = st.sidebar.selectbox("Moeda Destino:", moedas_disponiveis)
+    
+    # Cálculo do conversor
     price_target = df_recente[df_recente['Asset'] == target]['Price'].values[0]
     st.sidebar.subheader(f"{input_val / price_target:.2f} {target}")
     
-    # 4. Aviso de Segurança (Reduzido e Discreto)
+    # 4. Aviso de Segurança Reduzido
     st.sidebar.markdown("---")
     st.sidebar.caption("⚠️ **Aviso:** Fins educacionais. Não use para investimentos reais.")
 
-    # 5. Log Oculto (Apenas para conferência rápida)
+    # 5. Log Oculto
     with st.expander("Visualizar Log Oculto"):
         st.dataframe(df_completo.tail(10), use_container_width=True)
 else:
-    st.error("Falha na sincronização. Verifique a conexão.")
+    st.error("Falha na sincronização inicial. Verifique sua conexão ou a API de dados.")
