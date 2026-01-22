@@ -22,7 +22,7 @@ load_nltk()
 
 # --- CONFIGURAÇÃO ALPHA VISION ---
 st.set_page_config(
-    page_title="Alpha Vision - Terminal Financeiro",
+    page_title="Alpha Vision",
     layout="wide",
     page_icon="♾️"
 )
@@ -35,7 +35,7 @@ def fetch_market_data():
     try:
         response = requests.get(url, timeout=10)
         return response.json() if response.status_code == 200 else None
-    except Exception:
+    except:
         return None
 
 def get_market_analysis(pct_change):
@@ -47,7 +47,7 @@ def get_market_analysis(pct_change):
             return "BAIXA", "🔴"
         else:
             return "ESTÁVEL", "⚪"
-    except (ValueError, TypeError):
+    except:
         return "N/A", "⚪"
 
 # --- PROCESSAMENTO DE DADOS ---
@@ -69,12 +69,12 @@ if data_api:
 
 df_current = pd.DataFrame(new_rows)
 
-# Persistência Simples (Local/Streamlit Cloud Cache)
+# Persistência de Dados
 if not df_current.empty:
     if os.path.exists(EXCEL_DB):
         try:
             df_old = pd.read_excel(EXCEL_DB)
-            df_completo = pd.concat([df_old, df_current], ignore_index=True).tail(100) # Mantém as últimas 100 entradas
+            df_completo = pd.concat([df_old, df_current], ignore_index=True).tail(100)
             df_completo.to_excel(EXCEL_DB, index=False)
         except:
             df_completo = df_current
@@ -82,65 +82,65 @@ if not df_current.empty:
         df_current.to_excel(EXCEL_DB, index=False)
         df_completo = df_current
 else:
-    # Caso a API falhe, tenta carregar o que já existe
-    if os.path.exists(EXCEL_DB):
-        df_completo = pd.read_excel(EXCEL_DB)
-    else:
-        df_completo = pd.DataFrame()
+    df_completo = pd.read_excel(EXCEL_DB) if os.path.exists(EXCEL_DB) else pd.DataFrame()
 
 # --- INTERFACE STREAMLIT ---
 st.title("♾️ Alpha Vision | Terminal de Monitoramento")
 
 if not df_completo.empty:
-    # Pegamos os últimos 4 registros únicos (um de cada moeda) para os cards
-    df_recente = df_completo.drop_duplicates(subset=['Asset'], keep='last').reset_index(drop=True)
+    # Pegamos os dados mais recentes para os cards
+    df_recente = df_completo.drop_duplicates(subset=['Asset'], keep='last')
     
     # 1. Cards de Métricas
-    cols = st.columns(len(df_recente))
-    for i, row in df_recente.iterrows():
-        with cols[i]:
-            # Delta numérico para cor automática
-            st.metric(
-                label=row['Asset'], 
-                value=f"R$ {row['Price']:.2f}", 
-                delta=f"{row['Change_Pct']:.2f}%"
-            )
-            st.caption(f"Tendência: {row['Icon']} {row['Trend']}")
+    cols = st.columns(4)
+    for i, (index, row) in enumerate(df_recente.iterrows()):
+        if i < 4:
+            with cols[i]:
+                st.metric(
+                    label=row['Asset'], 
+                    value=f"R$ {row['Price']:.2f}", 
+                    delta=f"{row['Change_Pct']:.2f}%"
+                )
+                st.markdown(f"**Tendência:** {row['Icon']} {row['Trend']}")
 
     st.markdown("---")
 
-    # 2. Visualização de Dados (Gráfico de Histórico ou Comparativo)
-    col_chart1, col_chart2 = st.columns(2)
-    
-    with col_chart1:
+    # 2. Gráficos
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
         fig_bar = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
-                     title="Cotação Atual (Comparativo)", 
-                     template="plotly_dark", text_auto='.2f')
+                         title="Comparativo de Ativos (Preço Atual)", 
+                         template="plotly_dark", text_auto='.2f')
         st.plotly_chart(fig_bar, use_container_width=True)
-
-    with col_chart2:
-        # Gráfico de histórico baseado no Excel
+    
+    with col_g2:
         fig_line = px.line(df_completo, x="Timestamp", y="Price", color="Asset",
-                          title="Variação nas Últimas Leituras",
+                          title="Histórico de Variação Intradiária",
                           template="plotly_dark")
         st.plotly_chart(fig_line, use_container_width=True)
 
     # 3. Sidebar e Conversor
     with st.sidebar:
         st.header("💱 Conversor Alpha")
-        val_brl = st.number_input("Valor em R$", min_value=0.0, value=100.0, step=10.0)
-        
-        assets_disponiveis = df_recente['Asset'].unique()
-        target = st.selectbox("Converter para:", assets_disponiveis)
+        val_brl = st.number_input("Valor em R$", min_value=1.0, value=100.0)
+        target = st.selectbox("Converter para:", df_recente['Asset'].unique())
         
         price_target = df_recente[df_recente['Asset'] == target]['Price'].values[0]
         res = val_brl / price_target
-        
         st.success(f"**Resultado:** {res:.2f} {target}")
+        
         st.divider()
-        st.info("Dados atualizados via AwesomeAPI.")
+        # --- RECOLOCANDO SEUS DISCLAIMERS ORIGINAIS ---
+        st.warning("⚠️ **Aviso de Segurança**")
+        st.caption("""
+        Este software foi desenvolvido estritamente para fins educacionais e de portfólio. 
+        Os dados são obtidos de fontes públicas e podem sofrer atrasos. 
+        O autor não se responsabiliza por decisões financeiras tomadas com base nestas informações.
+        """)
 
 else:
-    st.error("Aguardando conexão com a API ou dados do mercado...")
-    if st.button("Tentar Atualizar"):
-        st.rerun()
+    st.error("Conectando ao terminal de dados...")
+
+# Rodapé de Isenção 
+st.markdown("---")
+st.caption("© 2024 Alpha Vision Terminal | Fins Informantivos")
