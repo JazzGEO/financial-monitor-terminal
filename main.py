@@ -21,7 +21,11 @@ def load_nltk():
 load_nltk()
 
 # --- CONFIGURAÇÃO ALPHA VISION ---
-st.set_page_config(page_title="Alpha Vision", layout="wide", page_icon="🚀")
+st.set_page_config(
+    page_title="Alpha Vision",
+    layout="wide",
+    page_icon="favicon.png"
+)
 
 EXCEL_DB = "currency_data.xlsx"
 CURRENCIES = ["USD-BRL", "EUR-BRL", "GBP-BRL", "JPY-BRL"]
