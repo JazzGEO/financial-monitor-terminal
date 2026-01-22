@@ -22,7 +22,7 @@ load_nltk()
 
 # --- CONFIGURAÇÃO ALPHA VISION ---
 st.set_page_config(
-    page_title="Alpha Vision",
+    page_title="Alpha Vision - Terminal Financeiro",
     layout="wide",
     page_icon="♾️"
 )
@@ -35,106 +35,112 @@ def fetch_market_data():
     try:
         response = requests.get(url, timeout=10)
         return response.json() if response.status_code == 200 else None
-    except:
+    except Exception:
         return None
 
-# Função ajustada para remover o Bullish/Bearish e usar luzinhas
 def get_market_analysis(pct_change):
     try:
         change = float(pct_change)
-        if change > 0.05: 
+        if change > 0:
             return "ALTA", "🟢"
-        elif change < -0.05: 
+        elif change < 0:
             return "BAIXA", "🔴"
-        else: 
+        else:
             return "ESTÁVEL", "⚪"
-    except:
-        return "INDETERMINADO", "⚪"
+    except (ValueError, TypeError):
+        return "N/A", "⚪"
 
-def process_and_save_data():
-    raw_data = fetch_market_data()
-    if not (raw_data and isinstance(raw_data, dict)):
-        return None
-        
-    records = []
-    data_atual = datetime.now().strftime("%d/%m/%Y")
-    hora_atual = datetime.now().strftime("%H:%M:%S")
+# --- PROCESSAMENTO DE DADOS ---
+data_api = fetch_market_data()
+new_rows = []
 
-    for key, info in raw_data.items():
-        if isinstance(info, dict):
-            variacao = info.get('pctChange', '0')
-            tendencia, luzinha = get_market_analysis(variacao)
-            
-            records.append({
-                "Timestamp": hora_atual,
-                "Data": data_atual,
-                "Asset": info.get('name', '').split('/')[0],
-                "Price": float(info.get('bid', 0)),
-                "Change_Pct": str(variacao),
-                "Trend": tendencia,
-                "Icon": luzinha
-            })
-    
-    new_df = pd.DataFrame(records)
-    
+if data_api:
+    for key, value in data_api.items():
+        trend, icon = get_market_analysis(value['pctChange'])
+        new_rows.append({
+            "Timestamp": datetime.now().strftime("%H:%M:%S"),
+            "Data": datetime.now().strftime("%d/%m/%Y"),
+            "Asset": value['name'].split('/')[0],
+            "Price": float(value['bid']),
+            "Change_Pct": float(value['pctChange']),
+            "Trend": trend,
+            "Icon": icon
+        })
+
+df_current = pd.DataFrame(new_rows)
+
+# Persistência Simples (Local/Streamlit Cloud Cache)
+if not df_current.empty:
     if os.path.exists(EXCEL_DB):
         try:
-            old_df = pd.read_excel(EXCEL_DB)
-            combined_df = pd.concat([old_df, new_df], ignore_index=True).drop_duplicates(subset=['Timestamp', 'Asset'])
-            combined_df.to_excel(EXCEL_DB, index=False)
-            return combined_df
+            df_old = pd.read_excel(EXCEL_DB)
+            df_completo = pd.concat([df_old, df_current], ignore_index=True).tail(100) # Mantém as últimas 100 entradas
+            df_completo.to_excel(EXCEL_DB, index=False)
         except:
-            new_df.to_excel(EXCEL_DB, index=False)
-            return new_df
+            df_completo = df_current
     else:
-        new_df.to_excel(EXCEL_DB, index=False)
-        return new_df
-
-# --- EXECUÇÃO ---
-df_completo = process_and_save_data()
-
-if df_completo is None and os.path.exists(EXCEL_DB):
-    try:
+        df_current.to_excel(EXCEL_DB, index=False)
+        df_completo = df_current
+else:
+    # Caso a API falhe, tenta carregar o que já existe
+    if os.path.exists(EXCEL_DB):
         df_completo = pd.read_excel(EXCEL_DB)
-    except:
-        pass
+    else:
+        df_completo = pd.DataFrame()
 
-# --- INTERFACE PÚBLICA ALPHA VISION ---
-st.title("♾️ Alpha Vision")
-st.caption(f"Inteligência de Mercado Ativa | {datetime.now().strftime('%H:%M:%S')}")
+# --- INTERFACE STREAMLIT ---
+st.title("♾️ Alpha Vision | Terminal de Monitoramento")
 
-if df_completo is not None and not df_completo.empty:
-    df_recente = df_completo.tail(4).reset_index(drop=True)
+if not df_completo.empty:
+    # Pegamos os últimos 4 registros únicos (um de cada moeda) para os cards
+    df_recente = df_completo.drop_duplicates(subset=['Asset'], keep='last').reset_index(drop=True)
     
-    # 1. Cards de Métricas com as "Luzinhas"
-    cols = st.columns(4)
+    # 1. Cards de Métricas
+    cols = st.columns(len(df_recente))
     for i, row in df_recente.iterrows():
         with cols[i]:
-            val_pct = row.get('Change_Pct', '0')
-            st.metric(label=row['Asset'], value=f"R$ {row['Price']:.2f}", delta=f"{val_pct}%")
-            st.markdown(f"**Tendência:** {row['Icon']} {row['Trend']}")
+            # Delta numérico para cor automática
+            st.metric(
+                label=row['Asset'], 
+                value=f"R$ {row['Price']:.2f}", 
+                delta=f"{row['Change_Pct']:.2f}%"
+            )
+            st.caption(f"Tendência: {row['Icon']} {row['Trend']}")
 
-    # 2. Gráfico de Comparativo
     st.markdown("---")
-    fig = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
-                 title="Comparativo de Ativos em Tempo Real", 
-                 template="plotly_dark", text_auto='.2f')
-    st.plotly_chart(fig, use_container_width=True)
 
-    # 3. Sidebar
+    # 2. Visualização de Dados (Gráfico de Histórico ou Comparativo)
+    col_chart1, col_chart2 = st.columns(2)
+    
+    with col_chart1:
+        fig_bar = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
+                     title="Cotação Atual (Comparativo)", 
+                     template="plotly_dark", text_auto='.2f')
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col_chart2:
+        # Gráfico de histórico baseado no Excel
+        fig_line = px.line(df_completo, x="Timestamp", y="Price", color="Asset",
+                          title="Variação nas Últimas Leituras",
+                          template="plotly_dark")
+        st.plotly_chart(fig_line, use_container_width=True)
+
+    # 3. Sidebar e Conversor
     with st.sidebar:
         st.header("💱 Conversor Alpha")
-        val_brl = st.number_input("Valor em R$", min_value=1.0, value=100.0)
-        target = st.selectbox("Converter para:", df_recente['Asset'].unique())
+        val_brl = st.number_input("Valor em R$", min_value=0.0, value=100.0, step=10.0)
+        
+        assets_disponiveis = df_recente['Asset'].unique()
+        target = st.selectbox("Converter para:", assets_disponiveis)
         
         price_target = df_recente[df_recente['Asset'] == target]['Price'].values[0]
-        st.subheader(f"{val_brl / price_target:.2f} {target}")
+        res = val_brl / price_target
         
-        st.markdown("---")
-        st.caption("""
-        ⚠️ **DISCLAIMER:** As informações aqui apresentadas são de caráter exclusivamente informativo e demonstrativo. 
-        O uso destes dados para operações de mercado é de inteira responsabilidade do usuário.
-        """)
+        st.success(f"**Resultado:** {res:.2f} {target}")
+        st.divider()
+        st.info("Dados atualizados via AwesomeAPI.")
 
 else:
-    st.error("Estabelecendo conexão com Alpha Vision...")
+    st.error("Aguardando conexão com a API ou dados do mercado...")
+    if st.button("Tentar Atualizar"):
+        st.rerun()
