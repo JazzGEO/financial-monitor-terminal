@@ -143,4 +143,4 @@ else:
 
 # Rodapé 
 st.markdown("---")
-st.caption("© 2024 Alpha Vision Terminal")
+st.caption("© 2026 Alpha Vision Terminal")
