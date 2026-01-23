@@ -7,7 +7,7 @@ import os
 import plotly.express as px
 import nltk
 
-# --- PREPARAÇÃO SILENCIOSA DE AMBIENTE ---
+# PREPARAÇÃO SILENCIOSA DE AMBIENTE
 @st.cache_resource
 def load_nltk():
     try:
@@ -20,7 +20,7 @@ def load_nltk():
 
 load_nltk()
 
-# --- CONFIGURAÇÃO ALPHA VISION ---
+# CONFIGURAÇÃO ALPHA VISION
 st.set_page_config(
     page_title="Alpha Vision",
     layout="wide",
@@ -50,7 +50,7 @@ def get_market_analysis(pct_change):
     except:
         return "N/A", "⚪"
 
-# --- PROCESSAMENTO DE DADOS ---
+# PROCESSAMENTO DE DADOS 
 data_api = fetch_market_data()
 new_rows = []
 
@@ -84,7 +84,7 @@ if not df_current.empty:
 else:
     df_completo = pd.read_excel(EXCEL_DB) if os.path.exists(EXCEL_DB) else pd.DataFrame()
 
-# --- INTERFACE STREAMLIT ---
+# INTERFACE STREAMLIT
 st.title("♾️ Alpha Vision | Terminal de Monitoramento")
 
 if not df_completo.empty:
@@ -130,7 +130,7 @@ if not df_completo.empty:
         st.success(f"**Resultado:** {res:.2f} {target}")
         
         st.divider()
-        # --- RECOLOCANDO SEUS DISCLAIMERS ORIGINAIS ---
+        # DISCLAIMERS
         st.warning("⚠️ **Aviso de Segurança**")
         st.caption("""
         Este software foi desenvolvido estritamente para fins informativos. 
