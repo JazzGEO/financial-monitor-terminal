@@ -7,7 +7,6 @@ import os
 import plotly.express as px
 import nltk
 
-# PREPARAÇÃO SILENCIOSA DE AMBIENTE
 @st.cache_resource
 def load_nltk():
     try:
@@ -20,7 +19,6 @@ def load_nltk():
 
 load_nltk()
 
-# CONFIGURAÇÃO ALPHA VISION
 st.set_page_config(
     page_title="Alpha Vision",
     layout="wide",
@@ -50,7 +48,6 @@ def get_market_analysis(pct_change):
     except:
         return "N/A", "⚪"
 
-# PROCESSAMENTO DE DADOS 
 data_api = fetch_market_data()
 new_rows = []
 
@@ -69,7 +66,6 @@ if data_api:
 
 df_current = pd.DataFrame(new_rows)
 
-# Persistência de Dados
 if not df_current.empty:
     if os.path.exists(EXCEL_DB):
         try:
@@ -84,14 +80,11 @@ if not df_current.empty:
 else:
     df_completo = pd.read_excel(EXCEL_DB) if os.path.exists(EXCEL_DB) else pd.DataFrame()
 
-# INTERFACE STREAMLIT
 st.title("♾️ Alpha Vision | Terminal de Monitoramento")
 
 if not df_completo.empty:
-    # Pegamos os dados mais recentes para os cards
     df_recente = df_completo.drop_duplicates(subset=['Asset'], keep='last')
     
-    # 1. Cards de Métricas
     cols = st.columns(4)
     for i, (index, row) in enumerate(df_recente.iterrows()):
         if i < 4:
@@ -105,7 +98,6 @@ if not df_completo.empty:
 
     st.markdown("---")
 
-    # 2. Gráficos
     col_g1, col_g2 = st.columns(2)
     with col_g1:
         fig_bar = px.bar(df_recente, x="Asset", y="Price", color="Asset", 
@@ -119,7 +111,6 @@ if not df_completo.empty:
                           template="plotly_dark")
         st.plotly_chart(fig_line, use_container_width=True)
 
-    # 3. Sidebar e Conversor
     with st.sidebar:
         st.header("💱 Conversor Alpha")
         val_brl = st.number_input("Valor em R$", min_value=1.0, value=100.0)
@@ -130,7 +121,6 @@ if not df_completo.empty:
         st.success(f"**Resultado:** {res:.2f} {target}")
         
         st.divider()
-        # DISCLAIMERS
         st.warning("⚠️ **Aviso de Segurança**")
         st.caption("""
         Este software foi desenvolvido estritamente para fins informativos. 
@@ -141,6 +131,6 @@ if not df_completo.empty:
 else:
     st.error("Conectando ao terminal de dados...")
 
-# Rodapé 
 st.markdown("---")
+
 st.caption("© 2026 Alpha Vision Terminal")
