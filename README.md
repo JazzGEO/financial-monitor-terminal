@@ -3,7 +3,7 @@
 ## Português
 
 ### Descrição
-Este projeto é um terminal de monitoramento financeiro desenvolvido em Python. O sistema realiza a coleta automatizada de cotações de moedas (USD, EUR, GBP, JPY) via API, processa os dados utilizando inteligência artificial para análise de sentimento de mercado e armazena o histórico em arquivos Excel para persistência de dados. A interface é construída em Streamlit, oferecendo visualizações gráficas interativas e ferramentas de conversão monetária.
+Este projeto é um terminal de monitoramento financeiro desenvolvido em Python. O sistema realiza a coleta automatizada de cotações de moedas (USD, EUR, GBP, JPY) via API, processa os dados utilizando inteligência artificial para análise de sentimento de mercado e armazena o histórico em arquivos Excel para persistência de dados. A interface é construída em Streamlit, oferecendo visualizações gráficas interativas e ferramentas de conversão monetária
 
 ### Tecnologias Utilizadas
 - Linguagem: Python 3.13
@@ -33,3 +33,4 @@ This project is a financial monitoring terminal developed in Python. The system 
 
 ### Security Warning and Disclaimer
 The data presented is obtained from public sources and may be subject to delays. The author is not responsible for financial decisions made based on the information provided by this dashboard. Investments involve risk, and this terminal should not be used as the sole tool for analysis or professional financial advice.
+
