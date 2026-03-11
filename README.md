@@ -1,5 +1,9 @@
 # Financial Data Analytics Terminal
 
+![Terminal Monitor](terminalmonitor.png)
+![Metricas](metricas.png)
+![Conversor](conversor.png)
+
 ## Português
 
 ### Descrição
@@ -33,4 +37,5 @@ This project is a financial monitoring terminal developed in Python. The system 
 
 ### Security Warning and Disclaimer
 The data presented is obtained from public sources and may be subject to delays. The author is not responsible for financial decisions made based on the information provided by this dashboard. Investments involve risk, and this terminal should not be used as the sole tool for analysis or professional financial advice.
+
 
